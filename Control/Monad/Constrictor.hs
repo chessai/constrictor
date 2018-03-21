@@ -26,19 +26,19 @@ module Control.Monad.Constrictor
   ) where
 
 import Control.Applicative
+import Control.Monad ((<$!>))
 import Control.Monad.Trans.Cont (evalCont, cont)
 import Data.Foldable
 import Data.Functor.Compose (Compose(..))
 import Data.Monoid hiding ((<>))
 import Data.Semigroup
 import Data.Traversable (traverse)
-import GHC.Generics (Generic)
-
-infixl 4 <$!>
+import GHC.Generics (Generic,Generic1)
 
 -- A wrapped Applicative Functor.
 newtype Ap f a = Ap { getAp :: f a }
-  deriving (Functor,Generic,Foldable,Traversable)
+  deriving (Applicative,Eq,Foldable,Functor,Generic,Generic1
+           ,Monad,Ord,Read,Show,Traversable)
 
 instance (Applicative f, Semigroup a) => Semigroup (Ap f a) where
   (Ap x) <> (Ap y) = Ap $ liftA2 (<>) x y
@@ -86,11 +86,6 @@ foldrMapM' f xs = foldl f' return xs mempty
   f' k x br = do
     bl <- f x
     k $! (mappend bl br) 
-
-(<$!>) :: Monad m => (a -> b) -> m a -> m b
-f <$!> ma = do
-  a <- ma
-  pure $! f a
 
 fmap' :: Monad m => (a -> b) -> m a -> m b
 fmap' = (<$!>)
