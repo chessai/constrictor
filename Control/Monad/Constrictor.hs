@@ -7,13 +7,18 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 
 module Control.Monad.Constrictor
-  ( (<$!>)
+  ( 
+  -- * strict monadic functions 
+    (<$!>)
   , fmap'
   , liftM'
   , liftM2'
-  , traverse'
   , mapM'
  
+  -- * strict applicative functions
+  , traverse'
+  
+  -- * a wrapped applicative functor
   , Ap(..)
   
   -- * strict monadic folds
@@ -80,27 +85,43 @@ foldlMapM' f xs = foldr f' pure xs mempty
 -- Strict in the monoidal accumulator. 
 -- Monoidal accumulation happens from left to right.
 foldrMapM' :: forall t b a m. (Foldable t, Monoid b, Monad m) => (a -> m b) -> t a -> m b
-foldrMapM' f xs = foldl f' return xs mempty
+foldrMapM' f xs = foldl f' pure xs mempty
   where
   f' :: (b -> m b) -> a -> b -> m b
   f' k x br = do
     bl <- f x
     k $! (mappend bl br) 
 
+-- | Strict version of 'Data.Functor.fmap'.
+--
+-- Note this is equivalent to 'Control.Monad.<$!>',
+-- and is provided for convenience.
 fmap' :: Monad m => (a -> b) -> m a -> m b
 fmap' = (<$!>)
 
+-- | Strict version of 'Control.Monad.liftM'.
+--
+-- Note this is equivalent to 'Control.Monad.<$!>',
+-- and is provided for convenience.
 liftM' :: Monad m => (a -> b) -> m a -> m b
 liftM' = (<$!>)
 
+-- | Strict version of 'Control.Monad.liftM2'.
+--
 liftM2' :: Monad m => (a -> b -> c) -> m a -> m b -> m c
 liftM2' f a b = do
   x <- a
   y <- b
   pure $! f x y
 
+-- | Strict version of 'Data.Traversable.traverse'.
+--
+-- Note the increased constraint from 'Functor' to 'Applicative'.
 traverse' :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
 traverse' f = fmap evalCont . getCompose . traverse (Compose . fmap (\a -> cont $ \k -> k $! a) . f)
 
+-- | Strict version of 'Control.Monad.mapM'.
+--
+-- This is just 'traverse'' specialised to 'Monad'.
 mapM' :: (Traversable t, Monad m) => (a -> m b) -> t a-> m (t b)
 mapM' = traverse'
