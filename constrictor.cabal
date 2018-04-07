@@ -1,5 +1,5 @@
 name:                constrictor
-version:             0.1.0.1
+version:             0.1.0.2
 synopsis:            strict versions of many things in base
 description:         This package provides strict versions of many functions in
                      base, including some functions not present, such as
