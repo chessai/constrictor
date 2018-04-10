@@ -6,9 +6,16 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 
+{-|
+This library provides strict versions of many
+functions in base, as well as a few functions
+that do not have lazy versions that exist in
+base (see the section on Folds).
+-}
+
 module Control.Monad.Constrictor
   ( 
-  -- * strict monadic functions 
+    -- * Strict monadic functions 
     (<$!>)
   , fmap'
   , liftM'
@@ -18,20 +25,20 @@ module Control.Monad.Constrictor
   , liftM5'
   , ap' 
   , mapM'
- 
-  -- * strict applicative functions
+    
+    -- * Strict applicative functions
   , traverse'
-  
-  -- * a wrapped applicative functor
-  , Ap(..)
-  
-  -- * strict monadic folds
+
+    -- * Folds
+    -- ** Stict monadic folds
   , foldlMapM'
   , foldrMapM'
-  
-  -- * non-strict applicative folds for completeness 
+    -- ** Lazy applicative folds
   , foldlMapA
   , foldrMapA
+    -- * Types
+    -- ** Wrapped applicative functor
+  , Ap(..)
   ) where
 
 import Control.Applicative
@@ -105,9 +112,6 @@ foldrMapM' f xs = foldl f' pure xs mempty
 infixl 4 <$!>, `fmap'`, `liftM4'`
 
 -- | Strict version of 'Data.Functor.<$>'
--- 
--- Note the increased constraint of 'Monad'
--- from 'Functor'.
 (<$!>) :: Monad m => (a -> b) -> m a -> m b
 {-# INLINE (<$!>) #-}
 f <$!> m = do
@@ -129,7 +133,6 @@ liftM' :: Monad m => (a -> b) -> m a -> m b
 liftM' = (<$!>)
 
 -- | Strict version of 'Control.Monad.liftM2'.
---
 liftM2' :: Monad m => (a -> b -> c) -> m a -> m b -> m c
 {-# INLINE liftM2' #-}
 liftM2' f a b = do
@@ -169,14 +172,13 @@ liftM5' f a b c d e = do
 
 -- | Strict version of 'Control.Monad.ap'
 ap' :: Monad m => m (a -> b) -> m a -> m b
+{-# INLINE ap' #-}
 ap' m1 m2 = do
   f <- m1
   x <- m2
   pure $! f x
 
 -- | Strict version of 'Data.Traversable.traverse'.
---
--- Note the increased constraint from 'Functor' to 'Applicative'.
 traverse' :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
 {-# INLINE traverse' #-}
 traverse' f = fmap evalCont . getCompose . traverse (Compose . fmap (\a -> cont $ \k -> k $! a) . f)
