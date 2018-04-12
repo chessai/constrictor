@@ -61,7 +61,7 @@ import GHC.Generics (Generic,Generic1)
 
 -- | A wrapped applicative functor.
 --   Please note that base 4.12.0.0 will include this type,
---   and it will be removed at that point.
+--   and it will be removed from this library at that point.
 newtype Ap f a = Ap { getAp :: f a }
   deriving ( Alternative, Applicative
            , Enum, Eq, Foldable, Functor
@@ -117,7 +117,7 @@ foldrMapM' f xs = foldl f' pure xs mempty
     bl <- f x
     k $! (mappend bl br) 
 
-infixl 4 <$!>, `fmap'`, `liftM4'`
+infixl 4 <$!>, `fmap'`, `liftM'`
 
 -- | Strict version of 'Data.Functor.<$>'
 (<$!>) :: Monad m => (a -> b) -> m a -> m b
