@@ -24,18 +24,24 @@ module Control.Monad.Constrictor
   , liftM4'
   , liftM5'
   , ap' 
+    
+    -- * Strict traversable functions
+  , traverse'
   , mapM'
     
-    -- * Strict applicative functions
-  , traverse'
-
     -- * Folds
-    -- ** Stict monadic folds
-  , foldlMapM'
-  , foldrMapM'
+    -- ** Lazy monoidal folds
+  , foldrMap
+  , foldlMap
+    -- ** Strict monoidal folds
+  , foldrMap'
+  , foldlMap'
     -- ** Lazy applicative folds
   , foldlMapA
   , foldrMapA
+   -- ** Strict monadic folds
+  , foldlMapM'
+  , foldrMapM'
     -- * Types
     -- ** Wrapped applicative functor
   , Ap(..)
@@ -54,6 +60,8 @@ import Data.Traversable (traverse)
 import GHC.Generics (Generic,Generic1)
 
 -- | A wrapped applicative functor.
+--   Please note that base 4.12.0.0 will include this type,
+--   and it will be removed at that point.
 newtype Ap f a = Ap { getAp :: f a }
   deriving ( Alternative, Applicative
            , Enum, Eq, Foldable, Functor
