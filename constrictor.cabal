@@ -1,9 +1,9 @@
 name:                constrictor
-version:             0.1.0.2
+version:             0.1.0.3
 synopsis:            strict versions of many things in base
-description:         This package provides strict versions of many functions in
-                     base, including some functions not present, such as
-                     'foldlMapA', 'foldlMapM', 'foldrMapA', and foldrMapM.
+description:
+  This package provides strict versions of many functions in
+  base, including many folding functions not present in there.
 homepage:            https://github.com/chessai/constrictor.git
 license:             MIT
 license-file:        LICENSE

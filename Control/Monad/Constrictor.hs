@@ -189,3 +189,41 @@ traverse' f = fmap evalCont . getCompose . traverse (Compose . fmap (\a -> cont 
 mapM' :: (Traversable t, Monad m) => (a -> m b) -> t a-> m (t b)
 {-# INLINE mapM' #-}
 mapM' = traverse'
+
+-- The INLINES used below allow more list functions to fuse.
+-- See Trac #9848.
+{-# INLINE foldrMap  #-}
+{-# INLINE foldrMap' #-}
+{-# INLINE foldlMap  #-}
+{-# INLINE foldlMap' #-}
+
+-- | Map each element of a foldable structure to a monoid,
+-- and combine the results. This function is left-associative.
+--
+-- The operator is applied lazily. For a strict version, see
+-- 'foldlMap''.
+foldlMap :: (Monoid m, Foldable t) => (a -> m) -> t a -> m
+foldlMap f = foldl (flip (mappend . f)) mempty
+
+-- | Map each element of a foldable structure to a monoid,
+-- and combine the results. This function is right-associative.
+--
+-- Note that this is equivalent to 'Data.Foldable.foldMap'.
+foldrMap :: (Monoid m, Foldable t) => (a -> m) -> t a -> m
+foldrMap f = foldr (mappend . f) mempty
+
+-- | Map each element of a foldable structure to a monoid,
+-- and combine the results. This function is left-associative.
+--
+-- The operator is applied strictly. For a lazy version, see
+-- 'foldlMap'.
+foldlMap' :: (Monoid m, Foldable t) => (a -> m) -> t a -> m
+foldlMap' f = foldl' (flip (mappend . f)) mempty 
+
+-- | Map each element of a foldable structure to a monoid,
+-- and combine the results. This function is right-associative.
+--
+-- Note that this is equivalent to 'Data.Foldable.foldMap',
+-- but is strict.
+foldrMap' :: (Monoid m, Foldable t) => (a -> m) -> t a -> m
+foldrMap' f = foldr' (mappend . f) mempty
