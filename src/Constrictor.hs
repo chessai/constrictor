@@ -13,7 +13,7 @@ that do not have lazy versions that exist in
 base (see the section on Folds).
 -}
 
-module Control.Monad.Constrictor
+module Constrictor
   ( 
     -- * Strict monadic functions 
     (<$!>)
