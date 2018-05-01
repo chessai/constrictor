@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP                        #-}
+{-# LANGUAGE BangPatterns               #-}
 {-# LANGUAGE DeriveFoldable             #-}
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE DeriveGeneric              #-}
@@ -11,6 +12,10 @@ This library provides strict versions of many
 functions in base, as well as a few functions
 that do not have lazy versions that exist in
 base (see the section on Folds).
+
+Many functions in this library have an increased
+constraint from Functor to Monad in order to achieve
+strictness in their arguments or result.
 -}
 
 module Constrictor
@@ -104,7 +109,7 @@ foldlMapM' f xs = foldr f' pure xs mempty
   where
   f' :: a -> (b -> m b) -> b -> m b
   f' x k bl = do
-    br <- f x
+    !br <- f x
     k $! (mappend bl br) 
 
 -- Strict in the monoidal accumulator. 
@@ -114,7 +119,7 @@ foldrMapM' f xs = foldl f' pure xs mempty
   where
   f' :: (b -> m b) -> a -> b -> m b
   f' k x br = do
-    bl <- f x
+    !bl <- f x
     k $! (mappend bl br) 
 
 infixl 4 <$!>, `fmap'`, `liftM'`
@@ -123,9 +128,11 @@ infixl 4 <$!>, `fmap'`, `liftM'`
 (<$!>) :: Monad m => (a -> b) -> m a -> m b
 {-# INLINE (<$!>) #-}
 f <$!> m = do
-  x <- m
+  !x <- m
   pure $! f x
 
+-- | Strict version of 'Data.Functor.fmap'
+--
 -- Note this is equivalent to '<$!>',
 -- and is provided for convenience.
 fmap' :: Monad m => (a -> b) -> m a -> m b
@@ -144,46 +151,46 @@ liftM' = (<$!>)
 liftM2' :: Monad m => (a -> b -> c) -> m a -> m b -> m c
 {-# INLINE liftM2' #-}
 liftM2' f a b = do
-  x <- a
-  y <- b
+  !x <- a
+  !y <- b
   pure $! f x y
 
 -- | Strict version of 'Control.Monad.liftM3'.
 liftM3' :: Monad m => (a -> b -> c -> d) -> m a -> m b -> m c -> m d
 {-# INLINE liftM3' #-}
 liftM3' f a b c = do
-  x <- a
-  y <- b
-  z <- c
+  !x <- a
+  !y <- b
+  !z <- c
   pure $! f x y z
 
 -- | Strict version of 'Control.Monad.liftM4'.
 liftM4' :: Monad m => (a -> b -> c -> d -> e) -> m a -> m b -> m c -> m d -> m e 
 {-# INLINE liftM4' #-}
 liftM4' f a b c d = do
-  x <- a
-  y <- b
-  z <- c
-  u <- d
+  !x <- a
+  !y <- b
+  !z <- c
+  !u <- d
   pure $! f x y z u
 
 -- | Strict version of 'Control.Monad.liftM5'.
 liftM5' :: Monad m => (a -> b -> c -> d -> e -> f) -> m a -> m b -> m c -> m d -> m e -> m f
 {-# INLINE liftM5' #-}
 liftM5' f a b c d e = do
-  x <- a
-  y <- b
-  z <- c
-  u <- d
-  v <- e
+  !x <- a
+  !y <- b
+  !z <- c
+  !u <- d
+  !v <- e
   pure $! f x y z u v
 
 -- | Strict version of 'Control.Monad.ap'
 ap' :: Monad m => m (a -> b) -> m a -> m b
 {-# INLINE ap' #-}
 ap' m1 m2 = do
-  f <- m1
-  x <- m2
+  !f <- m1
+  !x <- m2
   pure $! f x
 
 -- | Strict version of 'Data.Traversable.traverse'.
