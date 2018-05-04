@@ -52,17 +52,28 @@ module Constrictor
   , Ap(..)
   ) where
 
+import Prelude hiding (foldr,foldl)
+
 import Control.Applicative
 import Control.Monad (MonadPlus)
+#if MIN_VERSION_base(4,9,0)
 import Control.Monad.Fail (MonadFail)
+#endif
 import Control.Monad.Fix  (MonadFix)
-import Control.Monad.Trans.Cont (evalCont, cont)
+import Control.Monad.Trans.Cont (ContT(..), cont)
 import Data.Foldable
 import Data.Functor.Compose (Compose(..))
+import Data.Functor.Identity (runIdentity)
 import Data.Monoid hiding ((<>))
+#if MIN_VERSION_base(4,9,0)
 import Data.Semigroup
-import Data.Traversable (traverse)
+#endif
+import Data.Traversable (traverse,Traversable)
 import GHC.Generics (Generic,Generic1)
+
+#if !(MIN_VERSION_base(4,8,0))
+import Control.Applicative (WrappedMonad(..))
+#endif
 
 -- | A wrapped applicative functor.
 --   Please note that base 4.12.0.0 will include this type,
@@ -70,13 +81,23 @@ import GHC.Generics (Generic,Generic1)
 newtype Ap f a = Ap { getAp :: f a }
   deriving ( Alternative, Applicative
            , Enum, Eq, Foldable, Functor
-           , Generic, Generic1
-           , Monad, MonadFail, MonadFix, MonadPlus
+           , Generic
+#if MIN_VERSION_base(4,6,0)
+           , Generic1
+#endif
+           , Monad
+#if MIN_VERSION_base(4,9,0)
+           , MonadFail
+#endif
+           , MonadFix, MonadPlus
            , Num, Ord, Read, Show, Traversable
            )
 
+
+#if MIN_VERSION_base(4,9,0)
 instance (Applicative f, Semigroup a) => Semigroup (Ap f a) where
   (Ap x) <> (Ap y) = Ap $ liftA2 (<>) x y
+#endif
 
 instance (Applicative f, Monoid a) => Monoid (Ap f a) where
   mempty = Ap $ pure mempty
@@ -105,7 +126,7 @@ foldrMapA f = foldl f' (pure mempty)
 --   this will run in constant space.
 --   Monoidal accumulation happens from left to right.
 foldlMapM' :: forall t b a m. (Foldable t, Monoid b, Monad m) => (a -> m b) -> t a -> m b
-foldlMapM' f xs = foldr f' pure xs mempty
+foldlMapM' f xs = foldr f' return xs mempty
   where
   f' :: a -> (b -> m b) -> b -> m b
   f' x k bl = do
@@ -115,7 +136,7 @@ foldlMapM' f xs = foldr f' pure xs mempty
 -- Strict in the monoidal accumulator. 
 -- Monoidal accumulation happens from left to right.
 foldrMapM' :: forall t b a m. (Foldable t, Monoid b, Monad m) => (a -> m b) -> t a -> m b
-foldrMapM' f xs = foldl f' pure xs mempty
+foldrMapM' f xs = foldl f' return xs mempty
   where
   f' :: (b -> m b) -> a -> b -> m b
   f' k x br = do
@@ -129,7 +150,7 @@ infixl 4 <$!>, `fmap'`, `liftM'`
 {-# INLINE (<$!>) #-}
 f <$!> m = do
   !x <- m
-  pure $! f x
+  return $! f x
 
 -- | Strict version of 'Data.Functor.fmap'
 --
@@ -153,7 +174,7 @@ liftM2' :: Monad m => (a -> b -> c) -> m a -> m b -> m c
 liftM2' f a b = do
   !x <- a
   !y <- b
-  pure $! f x y
+  return $! f x y
 
 -- | Strict version of 'Control.Monad.liftM3'.
 liftM3' :: Monad m => (a -> b -> c -> d) -> m a -> m b -> m c -> m d
@@ -162,7 +183,7 @@ liftM3' f a b c = do
   !x <- a
   !y <- b
   !z <- c
-  pure $! f x y z
+  return $! f x y z
 
 -- | Strict version of 'Control.Monad.liftM4'.
 liftM4' :: Monad m => (a -> b -> c -> d -> e) -> m a -> m b -> m c -> m d -> m e 
@@ -172,7 +193,7 @@ liftM4' f a b c d = do
   !y <- b
   !z <- c
   !u <- d
-  pure $! f x y z u
+  return $! f x y z u
 
 -- | Strict version of 'Control.Monad.liftM5'.
 liftM5' :: Monad m => (a -> b -> c -> d -> e -> f) -> m a -> m b -> m c -> m d -> m e -> m f
@@ -183,7 +204,7 @@ liftM5' f a b c d e = do
   !z <- c
   !u <- d
   !v <- e
-  pure $! f x y z u v
+  return $! f x y z u v
 
 -- | Strict version of 'Control.Monad.ap'
 ap' :: Monad m => m (a -> b) -> m a -> m b
@@ -191,19 +212,28 @@ ap' :: Monad m => m (a -> b) -> m a -> m b
 ap' m1 m2 = do
   !f <- m1
   !x <- m2
-  pure $! f x
+  return $! f x
 
 -- | Strict version of 'Data.Traversable.traverse'.
 traverse' :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
 {-# INLINE traverse' #-}
-traverse' f = fmap evalCont . getCompose . traverse (Compose . fmap (\a -> cont $ \k -> k $! a) . f)
+traverse' f = fmap (runIdentity . evalContT) . getCompose . traverse (Compose . fmap (\a -> cont $ \k -> k $! a) . f)
+
+-- this is copied from transformers for backwards compatibility
+evalContT :: (Monad m) => ContT r m r -> m r
+evalContT m = runContT m return
+{-# INLINE evalContT #-}
 
 -- | Strict version of 'Control.Monad.mapM'.
 --
 -- This is just 'traverse'' specialised to 'Monad'.
 mapM' :: (Traversable t, Monad m) => (a -> m b) -> t a-> m (t b)
 {-# INLINE mapM' #-}
+#if MIN_VERSION_base(4,8,0)
 mapM' = traverse'
+#else
+mapM' f xs = unwrapMonad (traverse' (\x -> WrapMonad (f x)) xs)
+#endif
 
 -- The INLINES used below allow more list functions to fuse.
 -- See Trac #9848.
