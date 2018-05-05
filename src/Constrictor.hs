@@ -14,13 +14,14 @@ that do not have lazy versions that exist in
 base (see the section on Folds).
 
 Many functions in this library have an increased
-constraint from Functor to Monad in order to achieve
-strictness in their arguments or result.
+constraint from Functor/Applicative to Monad in
+order to achieve strictness in their arguments
+and/or result.
 -}
 
 module Constrictor
   ( 
-    -- * Strict monadic functions 
+    -- * Strict 'lift-like' functions 
     (<$!>)
   , fmap'
   , liftM'
@@ -29,9 +30,8 @@ module Constrictor
   , liftM4'
   , liftM5'
   , ap' 
-    
-    -- * Strict traversable functions
   , traverse'
+  , traverse''
   , mapM'
     
     -- * Folds
@@ -93,7 +93,6 @@ newtype Ap f a = Ap { getAp :: f a }
            , Num, Ord, Read, Show, Traversable
            )
 
-
 #if MIN_VERSION_base(4,9,0)
 instance (Applicative f, Semigroup a) => Semigroup (Ap f a) where
   (Ap x) <> (Ap y) = Ap $ liftA2 (<>) x y
@@ -108,18 +107,12 @@ instance (Applicative f, Monoid a) => Monoid (Ap f a) where
 -- | Lazy in the monoidal accumulator. Monoidal accumulation
 --   happens from left to right.
 foldlMapA :: forall t b a f. (Foldable t, Monoid b, Applicative f) => (a -> f b) -> t a -> f b
-foldlMapA f = foldr f' (pure mempty)
-  where
-    f' :: a -> f b -> f b
-    f' x y = liftA2 mappend (f x) y
+foldlMapA f = foldr (\x y -> liftA2 mappend (f x) y) (pure mempty)
 
 -- | Lazy in the monoidal accumulator. Monoidal accumulation
 --   happens from left to right.
 foldrMapA :: forall t b a f. (Foldable t, Monoid b, Applicative f) => (a -> f b) -> t a -> f b
-foldrMapA f = foldl f' (pure mempty)
-  where
-    f' :: f b -> a -> f b
-    f' y x = liftA2 (flip mappend) (f x) y
+foldrMapA f = foldl (\y x -> liftA2 (flip mappend) (f x) y) (pure mempty)
 
 -- | Strict in the monoidal accumulator.
 --   For monads strict in the left argument of bind,
@@ -145,14 +138,41 @@ foldrMapM' f xs = foldl f' return xs mempty
 
 infixl 4 <$!>, `fmap'`, `liftM'`
 
--- | Strict version of 'Data.Functor.<$>'
+-- | This is 'Data.Functor.<$>', but strict in its
+-- argument and result.
+--
+-- This is re-defined in this module, and not
+-- just re-exported from @'Control.Monad'@.
+-- The reason for this is that there is no way
+-- to hide the docs for re-exports with Haddocks.
+--
+-- In the common case that one might import
+-- @'Control.Monad'@, we recommend structuring
+-- imports like so:
+--
+-- @
+-- import Control.Monad hiding ((<$!>))
+-- import Constrictor
+-- @
+--
+-- or
+--
+-- @
+-- import Control.Monad
+-- import Constrictor hiding ((<$!>))
+-- @
+--
+-- There should be no side effects (i.e.
+-- naming/scoping conflicts) introduced as a
+-- result of structuring one's imports in this way.
 (<$!>) :: Monad m => (a -> b) -> m a -> m b
 {-# INLINE (<$!>) #-}
 f <$!> m = do
   !x <- m
   return $! f x
 
--- | Strict version of 'Data.Functor.fmap'
+-- | This is 'Data.Functor.fmap', but strict in its
+-- argument and result.
 --
 -- Note this is equivalent to '<$!>',
 -- and is provided for convenience.
@@ -160,7 +180,8 @@ fmap' :: Monad m => (a -> b) -> m a -> m b
 {-# INLINE fmap' #-}
 fmap' = (<$!>)
 
--- | Strict version of 'Control.Monad.liftM'.
+-- | This is 'Control.Monad.liftM', but strict in its
+-- argument and result.
 --
 -- Note this is equivalent to '<$!>',
 -- and is provided for convenience.
@@ -168,7 +189,8 @@ liftM' :: Monad m => (a -> b) -> m a -> m b
 {-# INLINE liftM' #-} 
 liftM' = (<$!>)
 
--- | Strict version of 'Control.Monad.liftM2'.
+-- | This is 'Control.Monad.liftM2', but strict in its
+-- arguments and result.
 liftM2' :: Monad m => (a -> b -> c) -> m a -> m b -> m c
 {-# INLINE liftM2' #-}
 liftM2' f a b = do
@@ -176,7 +198,8 @@ liftM2' f a b = do
   !y <- b
   return $! f x y
 
--- | Strict version of 'Control.Monad.liftM3'.
+-- | This is 'Control.Monad.liftM3', but strict in its
+-- arguments and result.
 liftM3' :: Monad m => (a -> b -> c -> d) -> m a -> m b -> m c -> m d
 {-# INLINE liftM3' #-}
 liftM3' f a b c = do
@@ -185,7 +208,8 @@ liftM3' f a b c = do
   !z <- c
   return $! f x y z
 
--- | Strict version of 'Control.Monad.liftM4'.
+-- | This is 'Control.Monad.liftM4', but strict in its
+-- arguments and result.
 liftM4' :: Monad m => (a -> b -> c -> d -> e) -> m a -> m b -> m c -> m d -> m e 
 {-# INLINE liftM4' #-}
 liftM4' f a b c d = do
@@ -195,7 +219,8 @@ liftM4' f a b c d = do
   !u <- d
   return $! f x y z u
 
--- | Strict version of 'Control.Monad.liftM5'.
+-- | This is 'Control.Monad.liftM5', but strict in its
+-- arguments and result.
 liftM5' :: Monad m => (a -> b -> c -> d -> e -> f) -> m a -> m b -> m c -> m d -> m e -> m f
 {-# INLINE liftM5' #-}
 liftM5' f a b c d e = do
@@ -206,7 +231,8 @@ liftM5' f a b c d e = do
   !v <- e
   return $! f x y z u v
 
--- | Strict version of 'Control.Monad.ap'
+-- | This is 'Control.Monad.ap', but strict in its
+-- arguments and result.
 ap' :: Monad m => m (a -> b) -> m a -> m b
 {-# INLINE ap' #-}
 ap' m1 m2 = do
@@ -218,6 +244,11 @@ ap' m1 m2 = do
 traverse' :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
 {-# INLINE traverse' #-}
 traverse' f = fmap (runIdentity . evalContT) . getCompose . traverse (Compose . fmap (\a -> cont $ \k -> k $! a) . f)
+
+-- | Stricter version of 'Data.Traversable.traverse'.
+traverse'' :: (Traversable t, Monad m) => (a -> m b) -> t a -> m (t b)
+{-# INLINE traverse'' #-}
+traverse'' f = fmap' (runIdentity . evalContT) . getCompose . traverse (Compose . fmap' (\a -> cont $ \k -> k $! a) . f)
 
 -- this is copied from transformers for backwards compatibility
 evalContT :: (Monad m) => ContT r m r -> m r
