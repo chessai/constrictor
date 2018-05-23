@@ -71,10 +71,6 @@ import Data.Semigroup
 import Data.Traversable (traverse,Traversable)
 import GHC.Generics (Generic,Generic1)
 
-#if !(MIN_VERSION_base(4,8,0))
-import Control.Applicative (WrappedMonad(..))
-#endif
-
 -- | A wrapped applicative functor.
 --   Please note that base 4.12.0.0 will include this type,
 --   and it will be removed from this library at that point.
