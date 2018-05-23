@@ -54,8 +54,8 @@ module Constrictor
 
 import Prelude hiding (foldr,foldl)
 
-import Control.Applicative
-import Control.Monad (MonadPlus)
+import Control.Applicative (Alternative, Applicative(..), liftA2)
+import Control.Monad (MonadPlus, ap, liftM, liftM2)
 #if MIN_VERSION_base(4,9,0)
 import Control.Monad.Fail (MonadFail)
 #endif
@@ -248,11 +248,23 @@ traverse' f = fmap (runIdentity . evalContT) . getCompose . traverse (Compose . 
 -- | Stricter version of 'Data.Traversable.traverse'.
 traverse'' :: (Traversable t, Monad m) => (a -> m b) -> t a -> m (t b)
 {-# INLINE traverse'' #-}
-#if MIN_VERSION_base(4,8,0)
-traverse'' f = fmap' (runIdentity . evalContT) . getCompose . traverse (Compose . fmap' (\a -> cont $ \k -> k $! a) . f)
-#else
-traverse'' f = unwrapMonad . fmap' (runIdentity . evalContT) . getCompose . traverse (Compose . fmap' (\a -> cont $ \k -> k $! a) . (\x -> WrapMonad (f x)))
-#endif
+-- #if MIN_VERSION_base(4,8,0)
+--traverse'' f = fmap' (runIdentity . evalContT) . getCompose . traverse (Compose . fmap' (\a -> cont $ \k -> k $! a) . f)
+-- #else
+
+newtype WrappedMonad m a = WrappedMonad { unwrapMonad :: m a }
+  deriving (Monad)
+
+instance Monad m => Functor (WrappedMonad m) where
+    fmap f (WrappedMonad v) = WrappedMonad (liftM f v)
+
+instance Monad m => Applicative (WrappedMonad m) where
+    pure = WrappedMonad . pure
+    WrappedMonad f <*> WrappedMonad v = WrappedMonad (f `ap` v)
+    liftA2 f (WrappedMonad x) (WrappedMonad y) = WrappedMonad (liftM2 f x y)
+
+traverse'' f = unwrapMonad . fmap' (runIdentity . evalContT) . getCompose . traverse (Compose . fmap' (\a -> cont $ \k -> k $! a) . (\x -> WrappedMonad (f x)))
+-- #endif
 
 -- this is copied from transformers for backwards compatibility
 evalContT :: (Monad m) => ContT r m r -> m r
