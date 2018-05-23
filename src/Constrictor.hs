@@ -244,9 +244,9 @@ traverse' f = fmap (runIdentity . evalContT) . getCompose . traverse (Compose . 
 -- | Stricter version of 'Data.Traversable.traverse'.
 traverse'' :: (Traversable t, Monad m) => (a -> m b) -> t a -> m (t b)
 {-# INLINE traverse'' #-}
--- #if MIN_VERSION_base(4,8,0)
---traverse'' f = fmap' (runIdentity . evalContT) . getCompose . traverse (Compose . fmap' (\a -> cont $ \k -> k $! a) . f)
--- #else
+#if MIN_VERSION_base(4,8,0)
+traverse'' f = fmap' (runIdentity . evalContT) . getCompose . traverse (Compose . fmap' (\a -> cont $ \k -> k $! a) . f)
+#else
 
 newtype WrappedMonad m a = WrappedMonad { unwrapMonad :: m a }
   deriving (Monad)
@@ -260,7 +260,7 @@ instance Monad m => Applicative (WrappedMonad m) where
     liftA2 f (WrappedMonad x) (WrappedMonad y) = WrappedMonad (liftM2 f x y)
 
 traverse'' f = unwrapMonad . fmap' (runIdentity . evalContT) . getCompose . traverse (Compose . fmap' (\a -> cont $ \k -> k $! a) . (\x -> WrappedMonad (f x)))
--- #endif
+#endif
 
 -- this is copied from transformers for backwards compatibility
 evalContT :: (Monad m) => ContT r m r -> m r
