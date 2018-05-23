@@ -236,6 +236,18 @@ ap' m1 m2 = do
   !x <- m2
   return $! f x
 
+#if !(MIN_VERSION_base(4,8,0))
+newtype WrappedMonad m a = WrappedMonad { unwrapMonad :: m a }
+  deriving (Monad)
+
+instance Monad m => Functor (WrappedMonad m) where
+    fmap f (WrappedMonad v) = WrappedMonad (liftM f v)
+
+instance Monad m => Applicative (WrappedMonad m) where
+    pure = WrappedMonad . return
+    WrappedMonad f <*> WrappedMonad v = WrappedMonad (f `ap` v)
+#endif
+
 -- | Strict version of 'Data.Traversable.traverse'.
 traverse' :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
 {-# INLINE traverse' #-}
@@ -247,18 +259,6 @@ traverse'' :: (Traversable t, Monad m) => (a -> m b) -> t a -> m (t b)
 #if MIN_VERSION_base(4,8,0)
 traverse'' f = fmap' (runIdentity . evalContT) . getCompose . traverse (Compose . fmap' (\a -> cont $ \k -> k $! a) . f)
 #else
-
-newtype WrappedMonad m a = WrappedMonad { unwrapMonad :: m a }
-  deriving (Monad)
-
-instance Monad m => Functor (WrappedMonad m) where
-    fmap f (WrappedMonad v) = WrappedMonad (liftM f v)
-
-instance Monad m => Applicative (WrappedMonad m) where
-    pure = WrappedMonad . pure
-    WrappedMonad f <*> WrappedMonad v = WrappedMonad (f `ap` v)
-    liftA2 f (WrappedMonad x) (WrappedMonad y) = WrappedMonad (liftM2 f x y)
-
 traverse'' f = unwrapMonad . fmap' (runIdentity . evalContT) . getCompose . traverse (Compose . fmap' (\a -> cont $ \k -> k $! a) . (\x -> WrappedMonad (f x)))
 #endif
 
@@ -275,7 +275,7 @@ mapM' :: (Traversable t, Monad m) => (a -> m b) -> t a-> m (t b)
 #if MIN_VERSION_base(4,8,0)
 mapM' = traverse'
 #else
-mapM' f xs = unwrapMonad (traverse' (\x -> WrapMonad (f x)) xs)
+mapM' f xs = unwrapMonad (traverse' (\x -> WrappedMonad (f x)) xs)
 #endif
 
 -- The INLINES used below allow more list functions to fuse.
